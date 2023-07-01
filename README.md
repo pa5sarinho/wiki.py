@@ -2,7 +2,7 @@
 
 This is primarily a tool for reading wikipedia articles from the terminal. More functionality coming soon, probably.
 
-![example]('Screenshot_20230701_070103.png')
+![example](Screenshot_20230701_070103.png)
 
 ## Searching for articles
 The way the searching works is just like it would on the wikipedia search bar. Sometimes multiple things have the same term and different people have the same name. When the website isn't sure which you mean, it will show you possible options.
