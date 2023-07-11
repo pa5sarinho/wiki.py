@@ -21,8 +21,8 @@ YELLOW_BKG = "\33[7;49;93m"
 FOREGROUND_BKG = "\33[7;49;37m"
 
 # choose your color scheme configuration to best suit your terminal
-h1 = YELLOW_BKG
-h2 = GREEN_BKG
+h1 = YELLOW
+h2 = GREEN
 h3 = CYAN
 p = FOREGROUND
 a = CYAN
@@ -86,7 +86,6 @@ def printit(soup: BeautifulSoup, fullpage=False):
                     if printed+last_bit+1 == len(formatted_text):
                         break
                     row += 1
-                debug = len(formatted_text)
                 print()
             else:
                 if formatted_text.strip() != '':        
@@ -96,22 +95,16 @@ def printit(soup: BeautifulSoup, fullpage=False):
             number_of_paragraphs += 1
 
         elif formatted_text.strip() != '':
-            #if text.name == 'a':
-            #    links[formatted_text] = page[i].get('href') 
             if text.name == 'h1':
-                print('\n'+h1+formatted_text.center(terminal_width))
-            elif text.name == 'h2' and formatted_text != 'Contents':
-                if terminal_width > 50:
-                    h2_width = int(terminal_width/4)
-                else:
-                    h2_width = 20
-                print('\n'+h2+formatted_text.rjust(h2_width,'.'))
+                print('\n'+h1+formatted_text.center(terminal_width, '.'))
+            elif text.name == 'h2' and formatted_text != 'Contents' and text != 'See also':
+                print('\n'+h2+formatted_text.center(terminal_width, '.'))
             elif text.name == 'h3':
                 print('\n'+h3+formatted_text)
 
         # prompts input after 3 paragraphs if fullpage is set to false
         if number_of_paragraphs == 4 and not fullpage:
-            confirmation = input(GRAY_BKG+'\n[Enter] shows the whole article | Any character to go back: ')
+            confirmation = input(GRAY+'\n[Enter] shows the whole article | Any character to go back: ')
             if confirmation == '':
                 number_of_paragraphs = 6
                 pass
@@ -120,22 +113,43 @@ def printit(soup: BeautifulSoup, fullpage=False):
             
         i+=1
 
-def get_page_links(soup: BeautifulSoup): # only the important ones
+def get_page_links(soup: BeautifulSoup):
+    '''creates and returns a dictionary in the format {"page title":"page address"}
+    in alphabetical order for the soup object given as argument'''
     a_href = list()
     a_titles = list()
-    for tag in soup.find_all(href=re.compile('/wiki')):
-        a_titles.append(tag.get_text())
-        a_href.append('https://en.wikipedia.org'+tag.get('href'))
-    links = zip(a_titles, a_href)
-    return dict(links)
+    main_content = soup.find('div',attrs={'id':'mw-content-text'})
 
-def print_links(link_dict):
+    for a in main_content.find_all('a'):
+        address = a.get('href')
+        try:
+            if "/wiki/" in address:
+                a_titles.append(a.get_text())
+                a_href.append('https://en.wikipedia.org'+address)
+        except TypeError:
+            pass
+
+    links = dict(zip(a_titles, a_href))
+    sorted_links = dict(sorted(links.items()))
+    return sorted_links
+
+def print_links(link_dict, links_per_row=3):
     i = 0
-    for name, link in link_dict:
-        if i%3 == 0:
+    for name in link_dict:
+        if i % links_per_row == 0:
             print() # new line
-        print(f'[{i}] {name}', end=' ')
+        print(f'[{i:<3}] {name:<30}', end=' ')
         i += 1
+    
+    print('\n\nType a page ID number to view its content\nPress Enter to go back')
+    chosenLink = input(CYAN+'\n> ')
+
+    if chosenLink == '':
+        print('going back to searching')
+    else:
+        links = list(link_dict.values())
+        html = requests.get(links[int(chosenLink)]).text
+        printit(BeautifulSoup(html, 'html.parser'))
 
 if __name__ == '__main__':
     for line in wikiLogo:
@@ -150,11 +164,11 @@ if __name__ == '__main__':
         elif searchTerm == 'b':
             webbrowser.open(BASE_URL + previous_search)
         else:
-            article = getHTML(searchTerm)
             if searchTerm == 'a':
                 print_links(get_page_links(article))
             else:
+                article = getHTML(searchTerm)
                 printit(article)
                 previous_search = searchTerm
-                print(p+'[b] opens the above page on your default browser')
-                print('[a] shows a list of the links')
+                print(p+'\n[a] browse articles mentioned in the page')
+                print('[b] opens the above page on your default browser')
