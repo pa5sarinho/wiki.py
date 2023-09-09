@@ -7,6 +7,9 @@ from bs4 import BeautifulSoup
 
 BASE_URL = "https://en.wikipedia.org/w/index.php?search="
 
+#save .html files where?
+FILE_PATH = '/home/passarinho/notes/html/'
+
 # ANSI code for coloring the terminal characters
 CYAN = "\33[0;49;96m"
 GRAY = "\33[0;49;90m"
@@ -36,16 +39,26 @@ wikiLogo=['          _ _    _                _ _                        ',
 '                  |_|                                  |___/ ']
 
 
-def getHTML(userInput: str):
+def getHTML(userInput: str, saveHTML: bool = False):
     '''Takes a string as an argument. Makes a wikipedia search
-    and returns a BeautifulSoup object of the most relevant article'''
-    print(p+'\nsearching...')
+    and returns a BeautifulSoup object of the most relevant article.
+    if saveHTML is set to True, it saves the html file locally'''
+    if not saveHTML:
+        print(p+'\nsearching...')
+    else:
+        print(p+'\nsaving '+userInput+'.html to '+FILE_PATH)
+        
     html = requests.get(BASE_URL + userInput).text
+    if saveHTML:
+        with open(f'{FILE_PATH}{userInput}.html', 'w+') as file:
+            file.write(html)
+        print('done')
+            
     return BeautifulSoup(html, 'html.parser')
 
-def printit(soup: BeautifulSoup, fullpage=False):
-    '''The optional fullpage argument specifies if it should print the whole
-    article with no need of user confirmation'''
+def printit(soup: BeautifulSoup, fullpage=False, markdown=False):
+    '''The optional fullpage parameter specifies if it should print the whole
+    article with no need of user confirmation.'''
     i=0
     page = soup.find_all(['p', 'h1', 'h2', 'h3'])
     terminal_width = os.get_terminal_size()[0]
@@ -55,6 +68,7 @@ def printit(soup: BeautifulSoup, fullpage=False):
         unformatted_text = page[i].get_text()
         # getting rid of citations and [edit]
         formatted_text = re.sub(r"\[.*?\]", "", unformatted_text)
+
         if text.name == "p":
             # paragraphs are formatted according to terminal width (columns)
             if len(page[i].get_text()) > terminal_width:
@@ -87,6 +101,7 @@ def printit(soup: BeautifulSoup, fullpage=False):
                         break
                     row += 1
                 print()
+                
             else:
                 if formatted_text.strip() != '':        
                     print(p+formatted_text)
@@ -152,10 +167,12 @@ def print_links(link_dict, links_per_row=3):
         printit(BeautifulSoup(html, 'html.parser'))
 
 if __name__ == '__main__':
+
     for line in wikiLogo:
         print(line)
         
-    print('Search anything! If a page looks broken, try using different words.\nTo exit, just submit an empty input.')
+    print('To exit, just submit an empty input.')
+    print('You can type /save before a query to download the article.')
 
     while True:
         searchTerm = input(CYAN+'\n> ')
@@ -166,9 +183,14 @@ if __name__ == '__main__':
         else:
             if searchTerm == 'a':
                 print_links(get_page_links(article))
+            elif searchTerm == 'm':
+                saveToMarkdown(article)
             else:
-                article = getHTML(searchTerm)
-                printit(article)
-                previous_search = searchTerm
-                print(p+'\n[a] browse articles mentioned in the page')
-                print('[b] opens the above page on your default browser')
+                if searchTerm[:5] == '/save':
+                    getHTML(searchTerm[6:], saveHTML=True)
+                else:
+                    article = getHTML(searchTerm)
+                    printit(article)
+                    previous_search = searchTerm
+                    print(p+'\n[a] browse articles mentioned in the page')
+                    print('[b] opens the above page on your default browser')
